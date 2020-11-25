@@ -7,8 +7,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from aynil_google_photos import constants
-from aynil_google_photos.common import helper
+from backup_google_photos import constants
+from backup_google_photos.common import helper
 
 from selenium.webdriver.common.keys import Keys
 
@@ -65,6 +65,6 @@ def do_backup(config):
 
 
 if __name__ == '__main__':
-    from aynil_google_photos import config
+    from backup_google_photos import config
 
     do_backup(config)
