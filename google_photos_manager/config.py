@@ -1,4 +1,4 @@
-DRIVER = 'chrome'
-PROFILE_PATH = fr'C:\temp\selenium_test'
-OUT_PATH = fr'C:\temp\selenium_test_out'
-ALBUM_HANDLER_MODE = fr'COPY'
+DRIVER = "chrome"
+PROFILE_PATH = fr"C:\Users\denny\Downloads\GooglePhotosDownloads\selenium_profile"
+OUT_PATH = fr"C:\Users\denny\Downloads\GooglePhotosDownloads\data"
+ALBUM_HANDLER_MODE = "COPY"
