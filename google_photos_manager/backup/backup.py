@@ -19,7 +19,6 @@ from google_photos_manager.common import latlng
 from selenium.webdriver.common.keys import Keys
 
 
-
 def _cru_out_path(downloads_path):
     if not exists(downloads_path):
         makedirs(downloads_path)
@@ -60,7 +59,9 @@ def _download_media_if_needed(driver, infos):
             sleep(0.2)
             assert i < 100, f'A download was expected, but no file was found ({expected_path!r})'
 
-        return expected_path
+        return expected_path, True
+
+    return expected_path, False
 
 
 def _get_media_information(driver):
@@ -88,18 +89,28 @@ def _get_media_information(driver):
     except NoSuchElementException:
         longitude = latitude = None
 
+    # Favorite
+    try:
+        driver.find_element_by_xpath(f'//div[contains(@class, "Wyu6lb")]')
+        is_favorite = True
+    except NoSuchElementException:
+        is_favorite = False
+
     return {
         'name': name,
         'description': description,
         'latitude': latitude,
         'longitude': longitude,
+        'is_favorite': is_favorite,
     }
 
 
 def _patch_media_information(media_path, infos):
+    # Location
     if infos['latitude'] is not None and infos['longitude'] is not None:
         img = Image.open(media_path)
-        exif_dict = piexif.load(img.info['exif'])
+
+        exif_dict = piexif.load(media_path)
 
         lat_deg = latlng.to_deg(infos['latitude'], ['S', 'N'])
         lng_deg = latlng.to_deg(infos['longitude'], ['W', 'E'])
@@ -112,14 +123,18 @@ def _patch_media_information(media_path, infos):
             piexif.GPSIFD.GPSLongitude: exiv_lng, piexif.GPSIFD.GPSLongitudeRef: lng_deg[3]
         }
 
-        exif_data = piexif.load(media_path)
-
-        exif_data.update(exif_dict)
-        exif_bytes = piexif.dump(exif_data)
-
+        exif_bytes = piexif.dump(exif_dict)
         img.save(media_path, exif=exif_bytes)
 
-        return True
+    # Rating
+    img = Image.open(media_path)
+    exif_dict = piexif.load(img.info['exif'])
+
+    old_rating = exif_dict['0th'].get(piexif.ImageIFD.Rating)
+    exif_dict['0th'][piexif.ImageIFD.Rating] = 5 if infos['is_favorite'] else 0
+
+    exif_bytes = piexif.dump(exif_dict)
+    img.save(media_path, exif=exif_bytes)
 
 
 def _next_media(driver):
@@ -153,12 +168,12 @@ def do_backup(config):
             infos = _get_media_information(driver)
             print(infos['name'])
 
-            media_path = _download_media_if_needed(driver, infos)
+            media_path, just_downloaded = _download_media_if_needed(driver, infos)
             print('Downloaded')
 
-            if media_path:
-                _patch_media_information(media_path, infos)
-                print('Patched')
+            #if just_downloaded:
+            _patch_media_information(media_path, infos)
+            print('Patched')
 
             if not _next_media(driver):
                 break
