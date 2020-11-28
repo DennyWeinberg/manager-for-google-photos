@@ -13,6 +13,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from google_photos_manager import constants
+from google_photos_manager.backup.album_handler import AlbumHandler
 from google_photos_manager.common import selenium
 from google_photos_manager.common import latlng
 
@@ -96,12 +97,19 @@ def _get_media_information(driver):
     except NoSuchElementException:
         is_favorite = False
 
+    # Albums
+    try:
+        albums = [element.text for element in parent_container.find_elements_by_xpath('//div[@class="AJM7gb"]') if element.text]
+    except NoSuchElementException:
+        albums = []
+
     return {
         'name': name,
         'description': description,
         'latitude': latitude,
         'longitude': longitude,
         'is_favorite': is_favorite,
+        'albums': albums,
     }
 
 
@@ -130,7 +138,6 @@ def _patch_media_information(media_path, infos):
     img = Image.open(media_path)
     exif_dict = piexif.load(img.info['exif'])
 
-    old_rating = exif_dict['0th'].get(piexif.ImageIFD.Rating)
     exif_dict['0th'][piexif.ImageIFD.Rating] = 5 if infos['is_favorite'] else 0
 
     exif_bytes = piexif.dump(exif_dict)
@@ -148,6 +155,8 @@ def _next_media(driver):
 
 
 def do_backup(config):
+    album_handler = AlbumHandler(config.ALBUM_HANDLER_MODE, config.OUT_PATH)
+
     _cru_out_path(config.OUT_PATH)
 
     with selenium.driver_context(config.DRIVER, profile_path=config.PROFILE_PATH, downloads_path=config.OUT_PATH) as driver:
@@ -174,6 +183,9 @@ def do_backup(config):
             #if just_downloaded:
             _patch_media_information(media_path, infos)
             print('Patched')
+
+            album_handler.handle(media_path, infos)
+            print('Handled albums')
 
             if not _next_media(driver):
                 break
