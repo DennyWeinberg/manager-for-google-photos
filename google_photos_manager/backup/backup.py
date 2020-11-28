@@ -180,9 +180,9 @@ def do_backup(config):
             media_path, just_downloaded = _download_media_if_needed(driver, infos)
             print('Downloaded')
 
-            #if just_downloaded:
-            _patch_media_information(media_path, infos)
-            print('Patched')
+            if just_downloaded:
+                _patch_media_information(media_path, infos)
+                print('Patched')
 
             album_handler.handle(media_path, infos)
             print('Handled albums')
