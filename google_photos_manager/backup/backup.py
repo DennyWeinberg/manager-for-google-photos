@@ -59,7 +59,10 @@ class Backup:
             while not exists(expected_path):
                 i += 1
                 sleep(0.2)
-                assert i < 100, f'A download was expected, but no file was found ({expected_path!r})'
+                if i > 10:
+                    print(f'A download was expected, but no file was found ({expected_path!r})')
+                    self.driver.refresh()
+                    i = 0
 
             return expected_path, True
 
@@ -73,7 +76,11 @@ class Backup:
     def __get_name_element_from_information_panel(self, information_panel=None):
         information_panel = information_panel or self.__get_information_panel()
 
-        return list(filter(lambda element: element.text, information_panel.find_elements_by_xpath("//div[starts-with(@aria-label,'Filename') and text()]")))[0]
+        name_element_list = list(filter(lambda element: element.text, information_panel.find_elements_by_xpath("//div[starts-with(@aria-label,'Filename') and text()]")))
+        if not name_element_list:
+            raise NoSuchElementException()
+
+        return name_element_list[0]
 
     def _get_media_information(self):
         # Get information panel
@@ -158,8 +165,14 @@ class Backup:
 
             element.click()
 
+            i = -1
             while True:
+                i += 1
                 sleep(0.05)
+                if i > 50:
+                    print(f'Warning: An information panel was expected, but wasnt found')
+                    self.driver.refresh()
+                    i = 0
 
                 try:
                     information_panel = self.__get_information_panel()
