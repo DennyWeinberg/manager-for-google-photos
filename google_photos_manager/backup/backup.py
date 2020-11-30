@@ -51,6 +51,8 @@ class Backup:
     def _download_media_if_needed(self, infos):
         expected_path = join(config.OUT_PATH, infos['name'])
 
+        expected_path = expected_path.replace('~', '_')  # Downloaded file variation
+
         if not exists(expected_path):
             self.driver.find_element_by_xpath('//body').send_keys(Keys.SHIFT, 'd')
 
