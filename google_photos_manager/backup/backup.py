@@ -240,6 +240,8 @@ class Backup:
             album_handler.handle(media_path, infos)
             print('Handled albums')
 
+            session_helper.save_session_url(self.driver, config.OUT_PATH)
+
             if not self._next_media():
                 break
 

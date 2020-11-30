@@ -29,7 +29,4 @@ def driver_context(driver_name, out_path, profile_path=None):
             raise NotImplementedError(f'Driver not implemented: {driver_name!r}')
     finally:
         if driver_ is not None:
-            try:
-                session_helper.save_session_url(driver_, out_path)
-            finally:
-                driver_.close()
+            driver_.close()
