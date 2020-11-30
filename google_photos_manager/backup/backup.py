@@ -41,7 +41,7 @@ class Backup:
         sleep(1)
 
     def _ask_to_select_media(self):
-        input('Please select your start media')
+        input('Please select your start media and hit enter')
 
     def _open_info_window_if_needed(self):
         if not list(filter(lambda element: element.text, self.driver.find_elements_by_xpath("//*[text() = 'Info']"))):
