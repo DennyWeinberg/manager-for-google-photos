@@ -1,23 +1,18 @@
 import re
 from decimal import Decimal
-from os import makedirs
+from os import listdir
 from os.path import exists, join
 from time import sleep
 
 import piexif
 from PIL import Image
-
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.keys import Keys
 
 from google_photos_manager import constants
 from google_photos_manager.backup.album_handler import AlbumHandler
-from google_photos_manager.common import selenium, files
 from google_photos_manager.common import latlng
-
-from selenium.webdriver.common.keys import Keys
+from google_photos_manager.common import selenium, files
 
 
 class Backup:
@@ -39,11 +34,14 @@ class Backup:
             sleep(constants.LOGIN_SECS)
             raise Exception('Not logged in')
 
-    def _select_first_photo(self):
+    def _select_first_media(self):
         self.driver.find_element_by_xpath('//body').send_keys(Keys.ARROW_RIGHT)
         sleep(0.1)
         self.driver.switch_to.active_element.send_keys(Keys.ENTER)
         sleep(1)
+
+    def _ask_to_select_media(self):
+        input('Please select your start media')
 
     def _open_info_window_if_needed(self):
         if not list(filter(lambda element: element.text, self.driver.find_elements_by_xpath("//*[text() = 'Info']"))):
@@ -191,8 +189,12 @@ class Backup:
         print('Checking session...')
         self._assert_logged_in()
 
-        print('Selecting the first media item...')
-        self._select_first_photo()
+        if not exists(config.OUT_PATH) or not listdir(config.OUT_PATH):
+            print('Selecting the first media item...')
+            self._select_first_media()
+        else:
+            print('Asking to select a media item...')
+            self._ask_to_select_media()
 
         print('Opening the info window if needed...')
         self._open_info_window_if_needed()
