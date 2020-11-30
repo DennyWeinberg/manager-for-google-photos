@@ -207,9 +207,9 @@ class Backup:
             media_path, just_downloaded = self._download_media_if_needed(infos)
             print('Downloaded')
 
-            if just_downloaded:
-                self._patch_media_information(media_path, infos)
-                print('Patched')
+            #if just_downloaded:
+            self._patch_media_information(media_path, infos)
+            print('Patched')
 
             album_handler.handle(media_path, infos)
             print('Handled albums')
