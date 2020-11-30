@@ -71,7 +71,7 @@ class Backup:
                 if files:
                     return files[0], True
 
-                if i > 10:
+                if i > 20:
                     raise Exception(f'File not found ({pattern!r})')
 
         return files[0], False
