@@ -9,7 +9,7 @@ downloading them. `Google Takout` neither does this, and doesn't give you a good
 
 The `backup.py` script uses `selenium` to loop over all your Google Photos media items and does the following:
 * Download the item
-* Extract the `albums` in order to copy it into a speicic folder
+* Extract the `albums` in order to copy it into a specific folder
 * Extract the `location` information in order to update the exif information
 * Checks if the item is a `favorite` in order to update the exif information (rating: 5 starts vs. 0)
 
