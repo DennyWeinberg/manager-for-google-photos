@@ -9,7 +9,6 @@ from PIL import Image
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 
-from google_photos_manager import constants
 from google_photos_manager.backup.album_handler import AlbumHandler
 from google_photos_manager.common import latlng_helper, session_helper, piexif_helper
 from google_photos_manager.common import selenium_helper, files_helper
@@ -25,16 +24,14 @@ class Backup:
         with selenium_helper.driver_context(config.DRIVER, config.OUT_PATH, profile_path=config.PROFILE_PATH) as self.driver:
             self.do_backup()
 
-    def _go_to_start(self):
+    def _go_to_start(self, start_page='https://photos.google.com/'):
         page_to_restore = session_helper.restore_session_url(self.config.OUT_PATH)
-        self.driver.get(page_to_restore or constants.STARTPAGE)
+        self.driver.get(page_to_restore or start_page)
         return page_to_restore
 
     def _assert_logged_in(self):
         if '/about/' in self.driver.current_url:
-            print(f'Please login or use another profile. Closing in {constants.LOGIN_SECS} seconds')
-            sleep(constants.LOGIN_SECS)
-            raise Exception('Not logged in')
+            input(f'Please login and hit enter:')
 
     def _select_first_media(self):
         self.driver.find_element_by_xpath('//body').send_keys(Keys.ARROW_RIGHT)
@@ -43,7 +40,7 @@ class Backup:
         sleep(1)
 
     def _ask_to_select_media(self):
-        input('Please select your start media and hit enter')
+        input('Please select your start media and hit enter:')
 
     def _open_info_window_if_needed(self):
         try:
