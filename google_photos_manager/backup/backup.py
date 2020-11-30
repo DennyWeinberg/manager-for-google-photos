@@ -1,7 +1,8 @@
 import re
 from decimal import Decimal
+from glob import glob
 from os import listdir
-from os.path import exists, join
+from os.path import exists, join, splitext
 from time import sleep
 
 import piexif
@@ -53,21 +54,27 @@ class Backup:
 
         expected_path = expected_path.replace('~', '_')  # Downloaded file variation
 
-        if not exists(expected_path):
+        pattern = f'{splitext(expected_path)[0]}.*[!crdownload]'  # Because the file name can end with .jpg, but the file is a .png
+
+        files = list(glob(pattern))
+        if not files:
             self.driver.find_element_by_xpath('//body').send_keys(Keys.SHIFT, 'd')
 
             i = -1
-            while not exists(expected_path):
+            while True:
                 i += 1
+
+                # Wait
                 sleep(0.2)
+
+                files = list(glob(pattern))
+                if files:
+                    return files[0], True
+
                 if i > 10:
-                    print(f'A download was expected, but no file was found ({expected_path!r})')
-                    self.driver.refresh()
-                    i = 0
+                    raise Exception(f'File not found ({pattern!r})')
 
-            return expected_path, True
-
-        return expected_path, False
+        return files[0], False
 
     def __get_information_panel(self):
         photo_key = self.driver.current_url.split('/')[-1]
@@ -139,7 +146,7 @@ class Backup:
         }
 
     def _patch_media_information(self, media_path, infos):
-        if media_path.lower().endswith('mp4'):
+        if media_path.lower().endswith(('.mp4', '.png')):
             return False
 
         # Location
