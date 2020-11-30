@@ -11,8 +11,8 @@ from selenium.webdriver.common.keys import Keys
 
 from google_photos_manager import constants
 from google_photos_manager.backup.album_handler import AlbumHandler
-from google_photos_manager.common import latlng
-from google_photos_manager.common import selenium, files
+from google_photos_manager.common import latlng_helper, session_helper, piexif_helper
+from google_photos_manager.common import selenium_helper, files_helper
 
 
 class Backup:
@@ -20,13 +20,15 @@ class Backup:
         self.config = config
         self.album_handler = AlbumHandler(config.ALBUM_HANDLER_MODE, config.OUT_PATH)
 
-        files.cru_out_path(config.OUT_PATH)
+        files_helper.cru_out_path(config.OUT_PATH)
 
-        with selenium.driver_context(config.DRIVER, profile_path=config.PROFILE_PATH, downloads_path=config.OUT_PATH) as self.driver:
+        with selenium_helper.driver_context(config.DRIVER, config.OUT_PATH, profile_path=config.PROFILE_PATH) as self.driver:
             self.do_backup()
 
-    def _go_to_home(self):
-        self.driver.get(constants.STARTPAGE)
+    def _go_to_start(self):
+        page_to_restore = session_helper.restore_session_url(self.config.OUT_PATH)
+        self.driver.get(page_to_restore or constants.STARTPAGE)
+        return page_to_restore
 
     def _assert_logged_in(self):
         if '/about/' in self.driver.current_url:
@@ -44,7 +46,9 @@ class Backup:
         input('Please select your start media and hit enter')
 
     def _open_info_window_if_needed(self):
-        if not list(filter(lambda element: element.text, self.driver.find_elements_by_xpath("//*[text() = 'Info']"))):
+        try:
+            self.__get_information_panel()
+        except NoSuchElementException:
             self.driver.find_element_by_xpath('//body').send_keys('i')
 
     def _download_media_if_needed(self, infos):
@@ -69,7 +73,17 @@ class Backup:
     def __get_information_panel(self):
         photo_key = self.driver.current_url.split('/')[-1]
 
-        return self.driver.find_element_by_css_selector(f'c-wiz[jslog*="{photo_key}"]')
+        i = -1
+        while True:
+            i += 1
+            sleep(0.05)
+            if i > 50:
+                raise NoSuchElementException(f'Warning: An information panel was expected, but wasnt found')
+
+            try:
+                return self.driver.find_element_by_xpath(f'//c-wiz[contains(@jslog, "{photo_key}")]')
+            except NoSuchElementException:
+                pass
 
     def __get_name_element_from_information_panel(self, information_panel=None):
         information_panel = information_panel or self.__get_information_panel()
@@ -126,24 +140,27 @@ class Backup:
         }
 
     def _patch_media_information(self, media_path, infos):
+        if media_path.lower().endswith('mp4'):
+            return False
+
         # Location
         if infos['latitude'] is not None and infos['longitude'] is not None:
             img = Image.open(media_path)
 
             exif_dict = piexif.load(media_path)
 
-            lat_deg = latlng.to_deg(infos['latitude'], ['S', 'N'])
-            lng_deg = latlng.to_deg(infos['longitude'], ['W', 'E'])
+            lat_deg = latlng_helper.to_deg(infos['latitude'], ['S', 'N'])
+            lng_deg = latlng_helper.to_deg(infos['longitude'], ['W', 'E'])
 
-            exiv_lat = (latlng.change_to_rational(lat_deg[0]), latlng.change_to_rational(lat_deg[1]), latlng.change_to_rational(lat_deg[2]))
-            exiv_lng = (latlng.change_to_rational(lng_deg[0]), latlng.change_to_rational(lng_deg[1]), latlng.change_to_rational(lng_deg[2]))
+            exiv_lat = (latlng_helper.change_to_rational(lat_deg[0]), latlng_helper.change_to_rational(lat_deg[1]), latlng_helper.change_to_rational(lat_deg[2]))
+            exiv_lng = (latlng_helper.change_to_rational(lng_deg[0]), latlng_helper.change_to_rational(lng_deg[1]), latlng_helper.change_to_rational(lng_deg[2]))
             exif_dict['GPS'] = {
                 piexif.GPSIFD.GPSVersionID: (2, 0, 0, 0),
                 piexif.GPSIFD.GPSLatitude: exiv_lat, piexif.GPSIFD.GPSLatitudeRef: lat_deg[3],
                 piexif.GPSIFD.GPSLongitude: exiv_lng, piexif.GPSIFD.GPSLongitudeRef: lng_deg[3]
             }
 
-            exif_bytes = piexif.dump(exif_dict)
+            exif_bytes = piexif_helper.safe_dump(exif_dict)
             img.save(media_path, exif=exif_bytes)
 
         # Rating
@@ -152,8 +169,10 @@ class Backup:
 
         exif_dict['0th'][piexif.ImageIFD.Rating] = 5 if infos['is_favorite'] else 0
 
-        exif_bytes = piexif.dump(exif_dict)
+        exif_bytes = piexif_helper.safe_dump(exif_dict)
         img.save(media_path, exif=exif_bytes)
+
+        return True
 
     def _next_media(self):
         element = self.driver.find_element_by_css_selector('div[aria-label="View next photo"]')
@@ -184,17 +203,18 @@ class Backup:
         album_handler = AlbumHandler(config.ALBUM_HANDLER_MODE, config.OUT_PATH)
 
         print('Going to home...')
-        self._go_to_home()
+        restored_page = self._go_to_start()
 
         print('Checking session...')
         self._assert_logged_in()
 
-        if not exists(config.OUT_PATH) or not listdir(config.OUT_PATH):
-            print('Selecting the first media item...')
-            self._select_first_media()
-        else:
-            print('Asking to select a media item...')
-            self._ask_to_select_media()
+        if not restored_page:
+            if not exists(config.OUT_PATH) or not listdir(config.OUT_PATH):
+                print('Selecting the first media item...')
+                self._select_first_media()
+            else:
+                print('Asking to select a media item...')
+                self._ask_to_select_media()
 
         print('Opening the info window if needed...')
         self._open_info_window_if_needed()
@@ -207,7 +227,7 @@ class Backup:
             media_path, just_downloaded = self._download_media_if_needed(infos)
             print('Downloaded')
 
-            #if just_downloaded:
+            # if just_downloaded:
             self._patch_media_information(media_path, infos)
             print('Patched')
 
