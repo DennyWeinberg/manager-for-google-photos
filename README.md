@@ -22,7 +22,7 @@ The `config.py` gives you control about:
 The `albums_handler.py` gives you control about what to do with the items that are present in albums.
 The default implementation does a `copy`. Some of you might prefer the creation of symlinks.
 
-The script stores the last url into session.txt, so we restart where we left during a possible previous exception.
+The script stores the last url into `session.txt`, so we continue where we left during a possible previous exception.
 
 # Credits
 
