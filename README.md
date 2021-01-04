@@ -24,6 +24,14 @@ The default implementation does a `copy`. Some of you might prefer the creation 
 
 The script stores the last url into `session.txt`, so we continue where we left during a possible previous exception.
 
+GPS Filler Script
+-----------------
+
+The aim is to copy the GPS information of Google Photos photos into the description,
+so it can be read by [Photo Map](https://play.google.com/store/apps/details?id=com.levionsoftware.instagram_map) ([Homepage](https://levionsoftware.com/)).
+
+More info [here](https://levionsoftware.com/help-last-chance-for-google-photos/).
+
 # Credits
 
 https://levionsoftware.com
