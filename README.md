@@ -37,7 +37,7 @@ Location Fixer Script
 
 The aim is to fill the location of local photos using the Google Location History.
 
-More info [here](https://levionsoftware.com/help-last-chance-for-google-photos/).
+More info [here](https://levionsoftware.com/learn-how-to-fix-missing-location-data-in-jpg-jpeg-images-exif/).
 
 # Credits
 
