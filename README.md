@@ -32,6 +32,13 @@ so it can be read by [Photo Map](https://play.google.com/store/apps/details?id=c
 
 More info [here](https://levionsoftware.com/help-last-chance-for-google-photos/).
 
+Location Fixer Script
+---------------------
+
+The aim is to fill the location of local photos using the Google Location History.
+
+More info [here](https://levionsoftware.com/help-last-chance-for-google-photos/).
+
 # Credits
 
 https://levionsoftware.com
