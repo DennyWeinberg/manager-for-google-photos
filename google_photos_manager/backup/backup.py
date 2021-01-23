@@ -1,8 +1,7 @@
 import re
 from decimal import Decimal
 from glob import glob
-from os import listdir
-from os.path import exists, join, splitext
+from os.path import join, splitext
 from time import sleep
 
 import piexif
@@ -11,8 +10,8 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 
 from google_photos_manager.backup.album_handler import AlbumHandler
-from google_photos_manager.common import latlng_helper, session_helper, piexif_helper
-from google_photos_manager.common import selenium_helper, files_helper
+from google_photos_manager.backup.helper import latlng_helper, session_helper, piexif_helper, selenium_helper, \
+    files_helper
 
 
 class Backup:
@@ -25,9 +24,9 @@ class Backup:
         with selenium_helper.driver_context(config.DRIVER, config.OUT_PATH, profile_path=config.PROFILE_PATH) as self.driver:
             self.do_backup()
 
-    def _go_to_start(self, start_page='https://photos.google.com/'):
+    def _go_to_start(self):
         page_to_restore = session_helper.restore_session_url(self.config.OUT_PATH)
-        self.driver.get(page_to_restore or start_page)
+        self.driver.get(page_to_restore or self.config.START)
         return page_to_restore
 
     def _assert_logged_in(self):
@@ -114,14 +113,16 @@ class Backup:
         description = description_element.text.strip()
 
         # Location
-        try:
-            map_element = information_panel.find_element_by_css_selector('a[href*="/maps?q="]')
-            res = re.findall(r'''([-]?\d+.\d+),([-]?\d+\.\d+)''', map_element.get_attribute('href'))
-            latitude, longitude = res[0]
-            latitude = Decimal(latitude)
-            longitude = Decimal(longitude)
-        except NoSuchElementException:
-            longitude = latitude = None
+        while True:
+            try:
+                map_element = information_panel.find_element_by_css_selector('a[href*="/maps?q="]')
+                res = re.findall(r'''([-]?\d+.\d+),([-]?\d+\.\d+)''', map_element.get_attribute('href'))
+                latitude, longitude = res[0]
+                latitude = Decimal(latitude)
+                longitude = Decimal(longitude)
+                break
+            except NoSuchElementException:
+                input(f'Please set a location and hit enter:')
 
         # Favorite
         try:
@@ -151,7 +152,14 @@ class Backup:
 
         # Location
         if infos['latitude'] is not None and infos['longitude'] is not None:
-            img = Image.open(media_path)
+            i = -1
+            while i < 10:
+                i += 1
+                try:
+                    img = Image.open(media_path)
+                    break
+                except PermissionError:
+                    sleep(0.2)
 
             exif_dict = piexif.load(media_path)
 
@@ -215,12 +223,8 @@ class Backup:
         self._assert_logged_in()
 
         if not restored_page:
-            if not exists(config.OUT_PATH) or not listdir(config.OUT_PATH):
-                print('Selecting the first media item...')
-                self._select_first_media()
-            else:
-                print('Asking to select a media item...')
-                self._ask_to_select_media()
+            print('Asking to select a media item...')
+            self._ask_to_select_media()
 
         print('Opening the info window if needed...')
         self._open_info_window_if_needed()

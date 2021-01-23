@@ -2,8 +2,6 @@ from contextlib import contextmanager
 
 from selenium import webdriver
 
-from google_photos_manager.common import session_helper
-
 
 @contextmanager
 def driver_context(driver_name, out_path, profile_path=None):

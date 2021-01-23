@@ -1,7 +1,7 @@
 from os.path import join
-from shutil import copy
+from shutil import copy, move
 
-from google_photos_manager.common import files_helper
+from google_photos_manager.backup.helper import files_helper
 
 
 class AlbumHandler:
@@ -17,3 +17,13 @@ class AlbumHandler:
             album_path = join(self.out_path, album)
             files_helper.cru_out_path(album_path)
             copy(path, join(album_path, infos['name']))
+
+    def _move(self, path, infos):
+        for idx, album in enumerate(infos['albums']):
+            album_path = join(self.out_path, album)
+            files_helper.cru_out_path(album_path)
+            if idx == 0:
+                move(path, join(album_path, infos['name']))
+                path = join(album_path, infos['name'])
+            else:
+                copy(path, join(album_path, infos['name']))
