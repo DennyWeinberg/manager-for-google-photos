@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from decimal import Decimal
 from glob import glob
 from os.path import join, splitext
@@ -175,7 +176,8 @@ class Backup:
             }
 
             exif_bytes = piexif_helper.safe_dump(exif_dict)
-            img.save(media_path, exif=exif_bytes)
+            if exif_bytes:
+                img.save(media_path, exif=exif_bytes)
 
         # Rating
         img = Image.open(media_path)
@@ -184,7 +186,8 @@ class Backup:
         exif_dict['0th'][piexif.ImageIFD.Rating] = 5 if infos['is_favorite'] else 0
 
         exif_bytes = piexif_helper.safe_dump(exif_dict)
-        img.save(media_path, exif=exif_bytes)
+        if exif_bytes:
+            img.save(media_path, exif=exif_bytes)
 
         return True
 
@@ -231,6 +234,8 @@ class Backup:
 
         print('Start the loop...')
         while True:
+            session_helper.save_session_url(self.driver, config.OUT_PATH)
+
             infos = self._get_media_information()
             print(infos['name'])
 
@@ -243,8 +248,6 @@ class Backup:
 
             album_handler.handle(media_path, infos)
             print('Handled albums')
-
-            session_helper.save_session_url(self.driver, config.OUT_PATH)
 
             if not self._next_media():
                 break
