@@ -1,5 +1,5 @@
-DRIVER = fr"chrome"
-PROFILE_PATH = fr"E:\Google Photos Backup\selenium_profile"
-OUT_PATH = fr"E:\Google Photos Backup\data"
+DRIVER = fr"firefox"
+PROFILE_PATH = fr"/Users/dennyweinberg/Library/Application Support/Firefox/Profiles/x1m25kig.default-release"
+OUT_PATH = fr"/Users/dennyweinberg/Pictures"
 ALBUM_HANDLER_MODE = fr"MOVE"
 START = fr"https://photos.google.com/search/_m8_Favorites"

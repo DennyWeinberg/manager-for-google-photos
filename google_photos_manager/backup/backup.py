@@ -10,9 +10,11 @@ from PIL import Image
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 
+import sys
+sys.path.insert(0, '/Users/dennyweinberg/git-clones/manager-for-google-photos')
+
 from google_photos_manager.backup.album_handler import AlbumHandler
-from google_photos_manager.backup.helper import latlng_helper, session_helper, piexif_helper, selenium_helper, \
-    files_helper
+from google_photos_manager.backup.helper import latlng_helper, session_helper, piexif_helper, selenium_helper,  files_helper
 
 
 class Backup:
@@ -54,7 +56,7 @@ class Backup:
 
         expected_path = expected_path.replace('~', '_')  # Downloaded file variation
 
-        pattern = f'{splitext(expected_path)[0]}.*[!crdownload]'  # Because the file name can end with .jpg, but the file is a .png
+        pattern = f'{splitext(expected_path)[0]}.*[!crdownload][!part]'  # Because the file name can end with .jpg, but the file is a .png
 
         files = list(glob(pattern))
         if not files:
@@ -69,6 +71,8 @@ class Backup:
 
                 files = list(glob(pattern))
                 if files:
+                    # Wait for download to finish
+                    sleep(0.5)
                     return files[0], True
 
                 if i > 20:
@@ -76,13 +80,13 @@ class Backup:
 
         return files[0], False
 
-    def __get_information_panel(self):
+    def __get_information_panel(self, sleep_time=0.05):
         photo_key = self.driver.current_url.split('/')[-1]
 
         i = -1
         while True:
             i += 1
-            sleep(0.05)
+            sleep(sleep_time)
             if i > 50:
                 raise NoSuchElementException(f'Warning: An information panel was expected, but wasnt found')
 
@@ -209,7 +213,7 @@ class Backup:
                     i = 0
 
                 try:
-                    information_panel = self.__get_information_panel()
+                    information_panel = self.__get_information_panel(sleep_time=0)
                     if old_id != information_panel.id:
                         self.__get_name_element_from_information_panel(information_panel=information_panel)
                         return True
