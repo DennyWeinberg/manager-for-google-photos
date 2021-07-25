@@ -1,6 +1,3 @@
-selenium
-chromedriver-py==90.0.4430.24
-geckodriver-autoinstaller
 pillow
 piexif
-# denny.weinberg.be@gmail.com
+gphotos-sync

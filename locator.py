@@ -1,5 +1,6 @@
 import datetime
 import json
+from os import EX_CONFIG
 import time
 from bisect import bisect_left
 from fractions import Fraction
@@ -8,12 +9,6 @@ from os.path import join, isfile, splitext, basename, dirname
 
 import piexif
 from PIL import Image
-
-
-# Copyrights:
-# https://levionsoftware.wordpress.com/fixing-missing-locations/
-# https://gist.github.com/chuckleplant/84b48f5c2cb743013462b6cb5f598f01
-# https://gist.github.com/c060604/8a51f8999be12fc2be498e9ca56adc72
 
 
 class Location(object):
@@ -89,10 +84,9 @@ class LocationFixer:
     INCLUDED_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG']
     HOURS_THRESHOLD = 3
 
-    def __init__(self, photos_folder_path, locations_file_path, out_folder_path):
+    def __init__(self, photos_folder_path, locations_file_path):
         self.photos_folder_path = photos_folder_path
         self.locations_file_path = locations_file_path
-        self.out_folder_path = out_folder_path
 
         self.locations = []
         self.photos = []
@@ -145,32 +139,34 @@ class LocationFixer:
     def state_03_collect_fixable_photos(self):
         print('Filtering photos by fixable locations...')
         for file, file_containing_folder_path, file_name_without_extension, ext, exif in self.photos_without_location:
-            time_exif = exif[36867]
-            time_jpeg_unix = time.mktime(datetime.datetime.strptime(time_exif, "%Y:%m:%d %H:%M:%S").timetuple())
+            time_exif = exif.get(36867)
+            if time_exif:
+                try:
+                    time_jpeg_unix = time.mktime(datetime.datetime.strptime(time_exif, "%Y:%m:%d %H:%M:%S").timetuple())
+                except ValueError:
+                    time_jpeg_unix = time.mktime(datetime.datetime.strptime(time_exif, "%Y/%m/%d %H:%M:%S").timetuple())
 
-            curr_loc = Location()
-            curr_loc.timestamp = int(time_jpeg_unix)
+                curr_loc = Location()
+                curr_loc.timestamp = int(time_jpeg_unix)
 
-            approx_location = find_closest_in_time(self.locations, curr_loc)
-            lat_f = float(approx_location.latitude) / 10000000.0
-            lon_f = float(approx_location.longitude) / 10000000.0
+                approx_location = find_closest_in_time(self.locations, curr_loc)
+                lat_f = float(approx_location.latitude) / 10000000.0
+                lon_f = float(approx_location.longitude) / 10000000.0
 
-            hours_away = abs(approx_location.timestamp - time_jpeg_unix) / 3600
-            in_threshold = hours_away < self.HOURS_THRESHOLD
+                hours_away = abs(approx_location.timestamp - time_jpeg_unix) / 3600
+                in_threshold = hours_away < self.HOURS_THRESHOLD
 
-            print(f'  Found location for photos {file}. Hours away: {hours_away}. In threshold: {in_threshold}')
+                print(f'  Found location for photos {file}. Hours away: {hours_away}. In threshold: {in_threshold}')
 
-            if in_threshold:
-                self.photos_fixable.append(
-                    (file, file_containing_folder_path, file_name_without_extension, ext, lat_f, lon_f))
+                if in_threshold:
+                    self.photos_fixable.append(
+                        (file, file_containing_folder_path, file_name_without_extension, ext, lat_f, lon_f))
 
         print(f' Photos to fix: {len(self.photos_fixable)}')
 
     def state_04_fix_photos(self):
         print(f' Fixing...')
         for file, file_containing_folder_path, file_name_without_extension, ext, lat_f, lon_f in self.photos_fixable:
-            dest_file = join(self.out_folder_path, file_name_without_extension + ext)
-
             img = Image.open(file)
             exif_dict = piexif.load(img.info['exif'])
 
@@ -186,7 +182,7 @@ class LocationFixer:
             }
 
             exif_bytes = piexif.dump(exif_dict)
-            img.save(dest_file, exif=exif_bytes)
+            img.save(file, exif=exif_bytes)
 
         print(f' Done')
 
@@ -194,4 +190,4 @@ class LocationFixer:
 if __name__ == '__main__':
     import sys
 
-    LocationFixer(sys.argv[1], sys.argv[2], sys.argv[3]).run()
+    LocationFixer(sys.argv[1], sys.argv[2]).run()
