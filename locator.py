@@ -16,6 +16,11 @@ class Location(object):
         for key in d or {}:
             if key == 'timestampMs':
                 self.timestamp = int(d[key]) / 1000
+            elif key == 'timestamp':
+                try:
+                    self.timestamp = int(time.mktime(datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S.%fZ").timetuple()))
+                except ValueError:
+                    self.timestamp = int(time.mktime(datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%SZ").timetuple()))
             elif key == 'latitudeE7':
                 self.latitude = d[key]
             elif key == 'longitudeE7':
@@ -108,7 +113,10 @@ class LocationFixer:
 
             for location in location_array:
                 location = Location(location)
-                self.locations.append(location)
+                if location.timestamp:
+                    self.locations.append(location)
+                else:
+                    print('Location missing timestamp')
 
         print(f' Locations: {len(self.locations)}')
 
@@ -129,10 +137,13 @@ class LocationFixer:
         for file, file_containing_folder_path, file_name_without_extension, ext in self.photos:
             image = Image.open(file)
             exif = image._getexif()
-            location = exif.get(34853)
-            if not location:
-                self.photos_without_location.append(
-                    (file, file_containing_folder_path, file_name_without_extension, ext, exif))
+            if not exif:
+                print('Photo missing EXIF data:',file)
+            else:
+                location = exif.get(34853)
+                if not location:
+                    self.photos_without_location.append(
+                        (file, file_containing_folder_path, file_name_without_extension, ext, exif))
 
         print(f' Photos without location: {len(self.photos_without_location)}')
 
@@ -141,10 +152,14 @@ class LocationFixer:
         for file, file_containing_folder_path, file_name_without_extension, ext, exif in self.photos_without_location:
             time_exif = exif.get(36867)
             if time_exif:
+                time_exif = time_exif.rstrip('\x00')
                 try:
                     time_jpeg_unix = time.mktime(datetime.datetime.strptime(time_exif, "%Y:%m:%d %H:%M:%S").timetuple())
                 except ValueError:
-                    time_jpeg_unix = time.mktime(datetime.datetime.strptime(time_exif, "%Y/%m/%d %H:%M:%S").timetuple())
+                    try:
+                        time_jpeg_unix = time.mktime(datetime.datetime.strptime(time_exif, "%Y/%m/%d %H:%M:%S").timetuple())
+                    except ValueError:
+                        time_jpeg_unix = time.mktime(datetime.datetime.strptime(time_exif, "%Y:%m:%d %H:%M:%S.%f").timetuple())
 
                 curr_loc = Location()
                 curr_loc.timestamp = int(time_jpeg_unix)
@@ -181,8 +196,18 @@ class LocationFixer:
                 piexif.GPSIFD.GPSLongitude: exiv_lng, piexif.GPSIFD.GPSLongitudeRef: lng_deg[3]
             }
 
-            exif_bytes = piexif.dump(exif_dict)
-            img.save(file, exif=exif_bytes)
+            try:
+                exif_bytes = piexif.dump(exif_dict)
+            except ValueError:
+                #https://github.com/hMatoba/Piexif/issues/95
+                #Probably should check the field id before wiping...
+                exif_dict['Exif'][41729] = b'1'
+                exif_bytes = piexif.dump(exif_dict)
+
+            try:
+                img.save(file, exif=exif_bytes)
+            except (OSError, PermissionError) as error:
+                print('Save fail!',file)
 
         print(f' Done')
 
